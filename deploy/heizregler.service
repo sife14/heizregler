@@ -1,0 +1,23 @@
+[Unit]
+Description=Heizregler thermostat2 (PI/MPC)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=heizregler
+Group=heizregler
+WorkingDirectory=/opt/heizregler/app
+ExecStart=/opt/heizregler/app/.venv/bin/python -m heizregler
+Restart=always
+RestartSec=10
+# Neustart soll stoßfrei sein: kein Rückgabe-Ritual beim Stoppen, 20 s für sauberes Beenden
+TimeoutStopSec=20
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/heizregler/var
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

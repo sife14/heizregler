@@ -1,0 +1,37 @@
+# Feste Konfiguration (versioniert). Live änderbare Parameter stehen nicht hier,
+# sondern in src/heizregler/parameter.py und werden über HA gestellt.
+
+[allgemein]
+takt_s = 60                     # Rechentakt des Reglers
+zustand_datei = "/opt/heizregler/var/zustand.json"
+mqtt_basis = "heizregler"       # Topic-Präfix
+discovery_praefix = "homeassistant"
+
+[entitaeten]
+raum = "sensor.klimasensor4_temperature"
+zuleitung = "sensor.zuleitung_heizung_am2301_temperature"
+aussen = "sensor.temp_uni"
+fenster = "binary_sensor.fenstersensor1_contact"
+trv = "climate.thermostat2"
+trv_lokal = "sensor.thermostat2_local_temperature"
+ventil = "number.thermostat2_valve_position"
+trv_modus = "select.thermostat2_trv_mode"
+experiment_status = "sensor.heizexp_status"
+# Zigbee2MQTT-Name des TRV; das Nachlesen (…/get) läuft über den HA-Dienst mqtt.publish
+z2m_geraet = "thermostat2"
+# Andere Regler für dasselbe TRV: Übernahme nur, wenn sie fehlen oder unavailable sind
+konkurrenten = ["climate.thermostat_bt"]
+
+[trv]
+modus_manuell = "1"
+modus_automatisch = "2"
+hvac_regelbetrieb = "auto"      # "heat" wäre beim Eurotronic ein Boost
+sollwert_rueckgabe = 20.5       # falls kein gesicherter Sollwert vorliegt
+bestaetigung_timeout_s = 45
+versuche = 3
+
+[kennlinie]
+# Heizanforderung h (0…1) -> Ventilstellung (0…255), stückweise linear.
+# Vorläufig linear; nach Auswertung der Haltestufen ersetzen.
+h = [0.0, 1.0]
+ventil = [0, 255]

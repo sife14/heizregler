@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "heizregler"
+version = "0.1.0"
+description = "Raumtemperaturregler für thermostat2 (PI, später MPC) mit Anbindung an Home Assistant"
+authors = ["Simon <sifemue@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "heizregler", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = "^3.10"
+aiomqtt = "^2.3"
+python-dotenv = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+
+[tool.poetry.scripts]
+heizregler = "heizregler.__main__:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
