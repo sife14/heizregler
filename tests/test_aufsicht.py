@@ -272,3 +272,33 @@ async def test_parameter_im_protokoll(umgebung):
     await takte(a, ha, uhr, 1)
     satz = a.protokoll.saetze[-1]
     assert satz["par_kp"] == 1.2 and "par_dither_aktiv" in satz and "par_ti_min" in satz
+
+
+async def test_ha_neustart_regelt_weiter_ohne_neue_uebernahme(umgebung):
+    a, ha, trv, uhr = umgebung
+    await a.betriebsart_setzen("pi")
+    await takte(a, ha, uhr, 3)
+    rueck = trv.rueckgaben
+    ha.verbunden = False
+    d = await takte(a, ha, uhr, 3)
+    assert d["zustand"] == "ha_getrennt"
+    ha.verbunden = True
+    ha.setze("sensor.raum", "unknown")  # direkt nach HA-Start noch kein Wert
+    uhr.t += timedelta(minutes=1)
+    d = await a.takt()
+    assert d["zustand"] == "aktiv" and d["fuehler_veraltet"] and trv.rueckgaben == rueck
+    ha.setze("sensor.raum", "20.4")
+    d = await takte(a, ha, uhr, 1)
+    assert d["zustand"] == "aktiv" and not d["fuehler_veraltet"]
+
+
+async def test_fuehler_fehlt_bei_uebernahme_kurz_wiederholen(umgebung):
+    a, ha, trv, uhr = umgebung
+    ha.setze("sensor.raum", "unavailable")
+    await a.betriebsart_setzen("pi")
+    uhr.t += timedelta(minutes=1)
+    d = await a.takt()
+    assert d["zustand"] == "stoerung"
+    ha.setze("sensor.raum", "20.5")
+    d = await takte(a, ha, uhr, 3)
+    assert d["zustand"] == "aktiv"

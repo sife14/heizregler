@@ -36,6 +36,7 @@ log = logging.getLogger(__name__)
 TZ = ZoneInfo("Europe/Berlin")
 WIEDERHOLUNG = timedelta(minutes=30)
 RUECKGABE_WIEDERHOLUNG = timedelta(minutes=5)
+FUEHLER_WIEDERHOLUNG = timedelta(minutes=2)
 FEHLGESCHLAGEN = -1  # Merker für „letzter Befehl unbestätigt“, erzwingt neuen Versuch nach Stelltakt
 
 
@@ -83,6 +84,8 @@ class Aufsicht:
         self.fenster_war_offen = False
         self.nachlauf_bis: datetime | None = None
         self.vorlauf_ueber: float | None = None
+        self.y_letzt: float | None = None  # letzter gültiger Raumwert
+        self.y_gemeldet: datetime | None = None  # dessen Meldezeitpunkt
         self.h_wirksam: float | None = None
 
         self.befehl: int | None = None
@@ -212,6 +215,13 @@ class Aufsicht:
                 self.uebernommen = False  # heizexp führt das TRV und stellt es selbst zurück
             self._setze("pause_experiment", f"heizexp: {m.experiment_status}")
         else:
+            if (
+                self.zustand == "ha_getrennt"
+                and self.uebernommen
+                and m.trv_modus == str(self.einst.trv["modus_manuell"])
+            ):
+                # Kurze HA-Unterbrechung (Neustart): TRV hängt noch am Regler, einfach weiter
+                self._setze("aktiv", "Wieder mit HA verbunden")
             if self.zustand == "aktiv" and m.trv_modus == str(self.einst.trv["modus_automatisch"]):
                 self.uebernommen = False
                 self._stoerung(jetzt, "TRV extern auf Automatik gestellt (Watchdog/Hand)")
@@ -230,16 +240,17 @@ class Aufsicht:
             log.info("Zustand %s (%s)", zustand_, grund)
         self.zustand, self.grund = zustand_, grund
 
-    def _stoerung(self, jetzt: datetime, grund: str) -> None:
+    def _stoerung(self, jetzt: datetime, grund: str, wiederholung: timedelta = WIEDERHOLUNG) -> None:
         self._setze("stoerung", grund)
-        self.naechster_versuch = jetzt + WIEDERHOLUNG
+        self.naechster_versuch = jetzt + wiederholung
 
     async def _uebernahme(self, m: Messung, jetzt: datetime) -> None:
         if self.zustand == "stoerung" and self.naechster_versuch and jetzt < self.naechster_versuch:
             return
         alter_s = m.raum_alter_s if m.raum_alter_s is not None else math.inf
         if m.raum is None or alter_s > float(self.param["fuehler_max_alter_min"]) * 60:
-            self._stoerung(jetzt, "Raumfühler fehlt oder veraltet, keine Übernahme")
+            # oft nur kurz (z. B. „unknown“ direkt nach HA-Start): bald erneut prüfen
+            self._stoerung(jetzt, "Raumfühler fehlt oder veraltet, keine Übernahme", FUEHLER_WIEDERHOLUNG)
             return
         if m.konkurrent_aktiv:
             self._stoerung(jetzt, "Anderer Regler (Better Thermostat o. a.) aktiv")
@@ -281,12 +292,17 @@ class Aufsicht:
 
     async def _regeln(self, m: Messung, dt: float, jetzt: datetime, d: dict[str, Any]) -> None:
         p = self.param
-        alter_min = (m.raum_alter_s if m.raum_alter_s is not None else math.inf) / 60.0
-        if m.raum is None or alter_min > float(p["fuehler_rueckgabe_min"]):
+        # Fehlt der Raumwert kurz (unavailable/unknown), mit dem letzten gültigen weiterrechnen
+        # und das Alter ab dessen Meldung zählen; erst nach fuehler_rueckgabe_min zurückgeben.
+        if m.raum is not None:
+            self.y_letzt = m.raum
+            self.y_gemeldet = jetzt - timedelta(seconds=m.raum_alter_s or 0.0)
+        alter_min = (jetzt - self.y_gemeldet).total_seconds() / 60.0 if self.y_gemeldet else math.inf
+        if self.y_letzt is None or alter_min > float(p["fuehler_rueckgabe_min"]):
             if await self._rueckgabe("Raumfühler zu lange ohne Meldung"):
                 self._stoerung(jetzt, "Raumfühler zu lange ohne Meldung, TRV regelt selbst")
             return
-        fuehler_veraltet = alter_min > float(p["fuehler_max_alter_min"])
+        fuehler_veraltet = m.raum is None or alter_min > float(p["fuehler_max_alter_min"])
 
         # Fenster und Nachlauf
         fenster = bool(m.fenster_offen)
@@ -297,7 +313,7 @@ class Aufsicht:
             self.nachlauf_bis = jetzt + timedelta(minutes=float(p["nachlauf_min"]))
         nachlauf = self.nachlauf_bis is not None and jetzt < self.nachlauf_bis
 
-        y = m.raum
+        y = self.y_letzt
         self.erholung.aktualisieren(y, dt, fenster or nachlauf, p)
         y_eff = self.erholung.y_eff(y, p) if p["erholung_aktiv"] and (fenster or nachlauf) else y
 
