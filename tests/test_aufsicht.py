@@ -248,3 +248,19 @@ async def test_neustart_setzt_reglerzustand_fort(umgebung, tmp_path):
     assert d["zustand"] == "aktiv"
     # fortgesetzt statt stoßfrei neu initialisiert; ein Takt Integration (~0,01) dazu
     assert b.regler.zustand()["i"] == pytest.approx(i_alt, abs=0.02)
+
+
+async def test_zentrale_nachts_ventil_gehalten(umgebung):
+    a, ha, trv, uhr = umgebung
+    uhr.t = datetime(2026, 10, 21, 19, 50, tzinfo=timezone.utc)  # 21:50 Ortszeit
+    await a.betriebsart_setzen("pi")
+    await takte(a, ha, uhr, 2)
+    n = len(trv.befehle)
+    await takte(a, ha, uhr, 10)  # jetzt nach 22:00 Ortszeit
+    ha.setze("sensor.raum", "19.5")  # kühlt aus, Zentrale liefert nichts
+    d = await takte(a, ha, uhr, 30)
+    assert d["zentrale_aus"] and "gehalten" in d["grund"]
+    assert len(trv.befehle) == n
+    ha.setze("binary_sensor.fenster", "on")  # Sicherheit geht vor
+    await takte(a, ha, uhr, 1)
+    assert trv.befehle[-1] == 0

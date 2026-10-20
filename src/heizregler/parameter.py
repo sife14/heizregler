@@ -69,6 +69,8 @@ ZAHLEN: tuple[Zahl, ...] = (
 SCHALTER: tuple[Schalter, ...] = (
     Schalter("erholung_aktiv", "Erholungsvorhersage", True, "fenster", "mdi:crystal-ball"),
     Schalter("zentrale_zeitfenster", "Zentrale-Zeitfenster nutzen", True, "zentrale", "mdi:clock-outline"),
+    # Ohne Vorlauf bringt Stellen nichts außer Batterieverbrauch
+    Schalter("ventil_halten_zentrale_aus", "Ventil halten bei Zentrale aus", True, "zentrale", "mdi:pause-circle-outline"),
     Schalter("dither_aktiv", "Dither aktiv", False, "identifikation", "mdi:sine-wave"),
     Schalter("vorlauf_kompensation", "Vorlaufkompensation", False, "vorlauf", "mdi:thermometer-auto"),
 )

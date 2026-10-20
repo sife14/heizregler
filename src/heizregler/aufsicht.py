@@ -335,7 +335,8 @@ class Aufsicht:
 
         ziel = self.stellglied.ventil(h, float(p["ventil_max"]))
         gesendet = False
-        if (not fuehler_veraltet or erzwingen) and self._stell_task is None:
+        halten = fuehler_veraltet or (zentrale_aus and bool(p["ventil_halten_zentrale_aus"]))
+        if (not halten or erzwingen) and self._stell_task is None:
             if Stellglied.senden(jetzt, ziel, self.befehl, self.befehl_zeit, p, erzwingen):
                 self._stellen_starten(ziel, jetzt)
                 gesendet = True
@@ -348,7 +349,7 @@ class Aufsicht:
         elif nachlauf:
             grund = "Nachlauf nach Lüften"
         elif zentrale_aus:
-            grund = f"Zentrale aus: {zentrale_grund}"
+            grund = f"Zentrale aus: {zentrale_grund}" + (", Ventil gehalten" if p["ventil_halten_zentrale_aus"] else "")
         else:
             grund = "Regelt"
         self._setze("aktiv", grund)
