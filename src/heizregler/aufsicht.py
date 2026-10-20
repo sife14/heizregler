@@ -430,6 +430,8 @@ class Aufsicht:
         except Exception:  # noqa: BLE001
             log.exception("Diagnose an HA fehlgeschlagen")
         felder = {k: v for k, v in d.items() if k not in ("herzschlag", "ventil_bestaetigt", "version")}
+        # Parameter in jedem Takt mitschreiben: jede Datenstrecke trägt ihre Einstellungen
+        felder.update({f"par_{k}": v for k, v in self.param.items()})
         await self.protokoll.schreiben(jetzt, felder, {"regler": self.regler.name})
 
     async def _ereignis(self, typ: str, text: str) -> None:

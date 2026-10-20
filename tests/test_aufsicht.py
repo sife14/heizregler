@@ -264,3 +264,11 @@ async def test_zentrale_nachts_ventil_gehalten(umgebung):
     ha.setze("binary_sensor.fenster", "on")  # Sicherheit geht vor
     await takte(a, ha, uhr, 1)
     assert trv.befehle[-1] == 0
+
+
+async def test_parameter_im_protokoll(umgebung):
+    a, ha, trv, uhr = umgebung
+    await a.parameter_setzen("kp", 1.2)
+    await takte(a, ha, uhr, 1)
+    satz = a.protokoll.saetze[-1]
+    assert satz["par_kp"] == 1.2 and "par_dither_aktiv" in satz and "par_ti_min" in satz
