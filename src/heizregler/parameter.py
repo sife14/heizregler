@@ -50,8 +50,10 @@ ZAHLEN: tuple[Zahl, ...] = (
     # Fenster und Erholung (Zweispeicher-Effekt)
     Zahl("nachlauf_min", "Nachlauf nach Fenster", 60, 0, 240, 5, "min", "fenster", "mdi:window-closed-variant"),
     Zahl("h_max_nachlauf", "Max. Anforderung im Nachlauf", 0.6, 0.0, 1.0, 0.05, None, "fenster", "mdi:gauge-low"),
-    Zahl("erholung_tau_min", "Erholung τ", 30, 5, 180, 1, "min", "fenster", "mdi:chart-bell-curve-cumulative"),
-    Zahl("erholung_horizont_min", "Erholung Horizont", 20, 0, 120, 5, "min", "fenster", "mdi:crystal-ball"),
+    # Selbsterholung ohne Heizung nach Lüften gemessen τ 1,5–2,5 h (mit Heizung 17–42 min)
+    Zahl("erholung_tau_min", "Erholung τ", 120, 5, 300, 1, "min", "fenster", "mdi:chart-bell-curve-cumulative"),
+    # ≈ Totzeit + schnelle Zeitkonstante: so weit voraus wirkt ein Stelleingriff
+    Zahl("erholung_horizont_min", "Erholung Horizont", 30, 0, 120, 5, "min", "fenster", "mdi:crystal-ball"),
     Zahl("speicher_tau_min", "Speicher τ (Auskühlen)", 240, 30, 1440, 10, "min", "fenster", "mdi:sofa"),
     # Zentrale
     Zahl("zentrale_uebertemp_k", "Zentrale aus unter", 2.0, 0.5, 10.0, 0.5, "K", "zentrale", "mdi:water-boiler-off"),
